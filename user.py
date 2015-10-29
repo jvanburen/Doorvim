@@ -21,6 +21,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+"""
+Interface for authenticating and storing short lists of users
+with phone number passwords.
+"""
+
+
 import json
 from collections import OrderedDict
 import string
@@ -35,7 +41,7 @@ __all__ = [
   'User',
   'load_users',
   'save_new_user',
-  'authenticate_user', 
+  'authenticate_user',
   'VALID_PASS_CHARS'
 ]
 
@@ -58,8 +64,8 @@ LOG = logging.getLogger(__name__)
 # JSON parser
 def disallow_floats(_):
   raise ValueError("Floating point numbers/constants not allowed in config")
-def identity(x):
-  return x
+def identity(obj):
+  return obj
 JSON_DECODE_KWARGS = {
   'object_hook': identity,  # object_pairs_hook takes priority
   'object_pairs_hook': OrderedDict,
@@ -82,8 +88,8 @@ def encode_as_digits(plain):
   raises ValueError if the text cannot be encoded"""
   try:
     return b''.join(ENCODE[string.upper(L)] for L in plain)
-  except KeyError as e:
-    raise ValueError(e.message)
+  except KeyError as ex:
+    raise ValueError(ex.message)
 
 class User(object):
   """Represents a known user of Doorman"""
@@ -96,7 +102,8 @@ class User(object):
   AUTH_SPEC_ERR = "Exactly one of {hash, pass} must be specified."
   PASS_LEN_ERR = "Password must be non-empty."
   PASS_CHARS_ERR = "Password must consist of only letters and numbers."
-  HASH_LEN_ERR = "Hash must be exactly %d hex-encoded bytes" % HASH_LEN + " (got %d)."
+  HASH_LEN_ERR = "Hash must be exactly %d hex-encoded bytes" % HASH_LEN \
+               + " (got %d)."
   UNSUP_OPT_ERR = "Unsupported options found: %s"
 
   def __init__(self, name, props):
@@ -132,9 +139,9 @@ class User(object):
         digits = encode_as_digits(password.strip())
       except ValueError:
         raise self._invalid_spec(self.PASS_CHARS_ERR)
-      h = self.hash_obj
-      h.update(digits)
-      self.digest = h.digest()
+      hash_obj = self.hash_obj
+      hash_obj.update(digits)
+      self.digest = hash_obj.digest()
     else:  # hash was specified instead
       try:
         print hexdigest
@@ -150,11 +157,11 @@ class User(object):
 
   def check_pass(self, digits):
     """Returns whether the given telephone digits are the user's password"""
-    h = self.hash_obj
-    h.update(digits)
+    hash_obj = self.hash_obj
+    hash_obj.update(digits)
     match = True
-    for b1, b2 in zip(h.digest(), self.digest):
-      match &= (b1 == b2)
+    for i, j in zip(hash_obj.digest(), self.digest):
+      match &= (i == j)
     return match
 
   def _invalid_spec(self, err):
@@ -177,13 +184,16 @@ User object if found.
   return None
 
 def read_config(filename):
+  """Parse a JSON file and return the empty """
   LOG.debug("Attempting to read config from " + filename)
-  decoder = json.JSONDecoder()
   try:
     with open(filename, 'r') as f:
-      return json.load(f)
-  except (OSError, ValueError):
-    return OrderedDict()
+      return CONFIG_READER.decode(f.read())
+  except OSError:
+    LOG.error("Could not read " + filename)
+  except ValueError:
+    LOG.error(filename + "was not valid JSON (is it empty?)")
+  return OrderedDict()
 
 def load_users(filename='users.json'):
   """Loads users from the config file and returns the list"""
@@ -199,7 +209,8 @@ def load_users(filename='users.json'):
 
   return users
 
-def save_new_user(name, passw, hash=True, saltlen=16, filename='users.json'):
+def save_new_user(name, passw, usehash=True, saltlen=16,
+                  filename='users.json'):
   """Adds a user to the config file"""
   config = read_config(filename)
 
@@ -209,14 +220,14 @@ def save_new_user(name, passw, hash=True, saltlen=16, filename='users.json'):
   options = {}
   options['salt'] = hexlify(salt)
 
-  h = hashlib.new(User.HASH_ALG, salt)
-  h.update(code)
-  digest = h.hexdigest()
-  if hash:
+  hash_obj = hashlib.new(User.HASH_ALG, salt)
+  hash_obj.update(code)
+  digest = hash_obj.hexdigest()
+  if usehash:
     options['hash'] = digest
   else:
     options['pass'] = passw
-  
+
   config[name] = options
 
   with open(filename, 'w') as f:
