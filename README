@@ -1,0 +1,4 @@
+Doorvim
+
+A vgetty door-answering machine for my apartment.
+Set this program as call_program in /etc/mgetty/voice.conf
