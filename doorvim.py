@@ -23,34 +23,52 @@
 
 from __future__ import division
 
-import user
-from iterface import Vgetty
+from user import *
+from interface import Vgetty
 from time import sleep
+import logging
+import sys ###
 
 HELLO = None  # "sounds/prompt.m4a"  # Convert to modem format
 UNAUTH = None  # "sounds/no.m4a"  # Convert to modem format
 GOODBYE = None  # "sounds/goodbye.m4a"  # Convert to modem format
+LOG_FILE = '/users/jacob/Desktop/visitors.log'  # '/home/pi/visitors.log'
 
 class Doorvim(Vgetty):
   def unlock(self):
     self.dial("#9")
 
 def main():
-  users = user.load_users()
+  users = load_users()
   doorvim = Doorvim()
+
   code = doorvim.read_dtmf_string(prompt=HELLO)
   if code is None:
-  	doorvim.play(GOODBYE)
-  	return 0
-  user = authenticate_user(code)
+    doorvim.play(GOODBYE)
+    return 0
+  user = authenticate_user(code, users)
   if user is None:
-  	doorvim.play(UNAUTH)
-  	sleep(0.5)
+    LOG.info(" Unauthorized user entered code: '%s'" % code)
+    doorvim.play(UNAUTH)
+    sleep(0.5)
   else:
-  	doorvim.play(user.greeting)
-  	doorvim.unlock()
+    LOG.info(" recognized user %s" % user.name)
+    doorvim.play(user.greeting)
+    doorvim.unlock()
   doorvim.play(GOODBYE)
+
+  del doorvim
+  Vgetty.finalize()
   return 0
 
 if __name__ == '__main__':
-  exit(main())
+  logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+  logging.info("Starting " + __name__)
+  LOG = logging.getLogger(__name__)
+
+  retc = main()
+  # logging.shutdown()
+  exit(retc)
+
+
+
