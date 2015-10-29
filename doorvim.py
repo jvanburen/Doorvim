@@ -21,9 +21,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+"""
+Doorvim
+
+A vgetty door-answering machine for my apartment.
+Set this program as call_program in /etc/mgetty/voice.conf
+"""
+
 from __future__ import division
 
-from user import *
+from user import load_users, authenticate_user
 from interface import Vgetty
 from time import sleep
 import logging
@@ -39,6 +46,7 @@ class Doorvim(Vgetty):
     self.dial("#9")
 
 def main():
+  """Program entry point"""
   users = load_users()
   doorvim = Doorvim()
 
@@ -48,11 +56,11 @@ def main():
     return 0
   user = authenticate_user(code, users)
   if user is None:
-    LOG.info(" Unauthorized user entered code: '%s'" % code)
+    LOG.info(" Unauthorized user entered code: " + code)
     doorvim.play(UNAUTH)
     sleep(0.5)
   else:
-    LOG.info(" recognized user %s" % user.name)
+    LOG.info(" recognized user " + user.name)
     doorvim.play(user.greeting)
     doorvim.unlock()
   doorvim.play(GOODBYE)
@@ -66,9 +74,9 @@ if __name__ == '__main__':
   logging.info("Starting " + __name__)
   LOG = logging.getLogger(__name__)
 
-  retc = main()
+  RETC = main()
   # logging.shutdown()
-  exit(retc)
+  exit(RETC)
 
 
 
