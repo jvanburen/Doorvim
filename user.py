@@ -21,20 +21,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-try:
-  from ConfigParser import ConfigParser
-except ImportError:  # Python 3.x
-  from configparser import ConfigParser
-
+import json
+from collections import OrderedDict
 import string
 import hashlib
-from binascii import unhexlify
+import os
+from binascii import hexlify, unhexlify
+import logging
 
 __all__ = [
   "encode_as_digits",
   'ENCODE',
   'User',
   'load_users',
+  'save_new_user',
   'authenticate_user', 
   'VALID_PASS_CHARS'
 ]
@@ -53,6 +53,29 @@ ENCODE = {
   '8': b'8', 'T': b'8', 'U': b'8', 'V': b'8',
   '9': b'9', 'W': b'9', 'X': b'9', 'Y': b'9', 'Z': b'9'
 }
+LOG = logging.getLogger(__name__)
+
+# JSON parser
+def disallow_floats(_):
+  raise ValueError("Floating point numbers/constants not allowed in config")
+def identity(x):
+  return x
+JSON_DECODE_KWARGS = {
+  'object_hook': identity,  # object_pairs_hook takes priority
+  'object_pairs_hook': OrderedDict,
+  'strict': True,
+  'parse_constant': disallow_floats,
+  'parse_float': disallow_floats,
+  'parse_int': identity
+}
+JSON_ENCODE_KWARGS = {
+  'sort_keys': True,
+  'indent': 2,
+  'separators': (',', ': '),
+
+}
+CONFIG_READER = json.JSONDecoder(**JSON_DECODE_KWARGS)
+CONFIG_WRITER = json.JSONEncoder(**JSON_ENCODE_KWARGS)
 
 def encode_as_digits(plain):
   """Idempotent function that encodes a plaintext as phone digits
@@ -81,10 +104,12 @@ class User(object):
     self.name = name
     self.greeting = props.get('greeting', None)
 
-    hexdigest = props.get('hash', None)  # salted password hash in hex
-    password = props.get('pass', None)  # password in plaintext
+    # salted password hash in hex
+    hexdigest = string.strip(props.get('hash', b''))
+    # password in plaintext
+    self.passw = password = string.strip(props.get('pass', b''))
 
-    salt = unhexlify(props.get('salt', b''))
+    self.salt = salt = unhexlify(props.get('salt', b'').strip())
     self._hash_obj = hashlib.new(self.HASH_ALG, salt)
 
     # At this point all the fields are filled in
@@ -96,15 +121,15 @@ class User(object):
       raise self._invalid_spec(msg)
 
     # Ensure only one of pass or hash is specified
-    if (password is None) == (hexdigest is None):
+    if bool(password) == bool(hexdigest):
       raise self._invalid_spec(self.AUTH_SPEC_ERR)
 
     # Set self.digest to reflect the given plaintext password or hex digest
-    if password == '':
-      raise self._invalid_spec(self.PASS_LEN_ERR)
-    elif password:
+    # if password == '':
+    #   raise self._invalid_spec(self.PASS_LEN_ERR)
+    if password:
       try:
-        digits = encode_as_digits(password)
+        digits = encode_as_digits(password.strip())
       except ValueError:
         raise self._invalid_spec(self.PASS_CHARS_ERR)
       h = self.hash_obj
@@ -112,8 +137,9 @@ class User(object):
       self.digest = h.digest()
     else:  # hash was specified instead
       try:
-        self.digest = unhexlify(hexdigest)
-        assert len(self.digest) == HASH_LEN
+        print hexdigest
+        self.digest = unhexlify(hexdigest.strip())
+        assert len(self.digest) == self.HASH_LEN
       except (ValueError, AssertionError):
         raise self._invalid_spec(self.HASH_LEN_ERR)
 
@@ -140,7 +166,7 @@ def authenticate_user(dtmf, users):
 User object if found.
   Otherwise, returns None. Raises no exceptions under normal operation."""
   try:
-    digits = encode_pass(dtmf)
+    digits = encode_as_digits(dtmf)
   except ValueError:
     return None
 
@@ -150,19 +176,49 @@ User object if found.
 
   return None
 
-def load_users(filename='config.ini'):
+def read_config(filename):
+  LOG.debug("Attempting to read config from " + filename)
+  decoder = json.JSONDecoder()
+  try:
+    with open(filename, 'r') as f:
+      return json.load(f)
+  except (OSError, ValueError):
+    return OrderedDict()
+
+def load_users(filename='users.json'):
   """Loads users from the config file and returns the list"""
-
-  config = ConfigParser()
-  config.read(filename)
-
+  config = read_config(filename)
   users = []
 
-  for name in config.sections():
-    props = config[name]
-    if not props.getboolean("disable", fallback=False) \
-       and props.getboolean("enable", fallback=True):
-      user = User(name, props)
+  for name, options in config.items():
+    LOG.debug("Loading user %s from file " % name + filename)
+    if not int(options.get("disable", False)) \
+       and int(options.get("enable", True)):
+      user = User(name, options)
       users.append(user)
 
   return users
+
+def save_new_user(name, passw, hash=True, saltlen=16, filename='users.json'):
+  """Adds a user to the config file"""
+  config = read_config(filename)
+
+  code = encode_as_digits(passw)
+  salt = os.urandom(saltlen)
+
+  options = {}
+  options['salt'] = hexlify(salt)
+
+  h = hashlib.new(User.HASH_ALG, salt)
+  h.update(code)
+  digest = h.hexdigest()
+  if hash:
+    options['hash'] = digest
+  else:
+    options['pass'] = passw
+  
+  config[name] = options
+
+  with open(filename, 'w') as f:
+    for chunk in CONFIG_WRITER.iterencode(config):
+      f.write(chunk)
