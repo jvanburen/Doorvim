@@ -24,6 +24,7 @@
 from __future__ import division
 import sys, os
 from signal import SIGPIPE, alarm, signal, SIGALRM
+import logging
 
 """
 Interface to the vgetty voice library for Doorvim
@@ -43,9 +44,23 @@ __all__ = [
 
 DTMF_WAIT = 30
 AUTOSTOP = True
+LOG = logging.getLogger(__name__)
+
+def require_enabled(f):
+  """Errors if not enabled"""
+  def wrapper(*args, **kwargs):
+    self = args[0]
+    if self.enabled:
+      return f(*args, **kwargs)
+    else:
+      msg = type(self).__name__ + ' is disabled'
+      LOG.error(msg)
+      LOG.error("(Tried to call a function requiring %s)" % repr(f))
+      raise RuntimeError(msg)
+  return wrapper
 
 class Vgetty(object):
-  """Static singleton representing the voice library"""
+  """Singleton representing the voice library"""
   __instance = None
 
   def __new__(cls):
@@ -54,8 +69,9 @@ class Vgetty(object):
     return Vgetty.__instance
 
   def __init__(self):
-    if Vgetty.__instance is not None: return
+    if hasattr(Vgetty.__instance, "status"): return
     def vin_timeout(signum, frame):
+      LOG.critical("Timeout while waiting for vgetty response")
       raise IOError("Timeout while waiting for vgetty response")
     signal(SIGALRM, vin_timeout)
     
@@ -67,10 +83,10 @@ class Vgetty(object):
 
     # The state is the last thing the library said to us
     # or None if disabled / unknown state
-    self.status = "INIT"  # Special state
+    self.status = "INIT"  # arbitrary, non-None to ensure that enabled is true
 
     # initial setup with library 
-    recv = self.waitfor("HELLO SHELL")
+    self.waitfor("HELLO SHELL")
     self.send("HELLO VOICE PROGRAM")
     self.waitfor()
 
@@ -79,29 +95,41 @@ class Vgetty(object):
       self.waitfor()
 
   def __del__(self):
+    LOG.info("Finalizing Vgetty")
     if self.enabled:
       self.send("GOODBYE")
       self.waitfor("GOODBYE SHELL")
-    self._vin.close()
-    self._vout.close()
+    else:
+      LOG.warning("Exiting with disabled Vgetty")
+
+    self._vin.fileno() > 2 and self._vin.close()
+    self._vout.fileno() > 2 and self._vout.close()
     self.status = None
+    LOG.info("Vgetty finalized")
+
+  @staticmethod
+  def finalize():
+    Vgetty.__instance = None
 
   @property
   def enabled(self):
       return self.status is not None
 
+  @require_enabled
   def send(self, msg):
     """Send a message to the voice library"""
-    assert self.enabled, "Voice library has been disabled"
-    self._vout.write(msg+'\n')
+    LOG.info("SEND: " + msg)
+    self._vout.write((msg+'\n').encode('ascii'))
     os.kill(self._voice_pid, SIGPIPE)
 
+  @require_enabled
   def _blocking_recv(self):
-    assert self.enabled, "Voice library has been disabled"
-    return self._vin.readline()
+    data = self._vin.readline()
+    LOG.info("RECV: " + data.decode('latin1'))
+    return data
 
+  @require_enabled
   def _recv(self, timeout):
-    assert self.enabled, "Voice library has been disabled"
     alarm(timeout)  # Plenty of time by default
     data = self._blocking_recv()
     alarm(0)  # Disable alarm
@@ -111,17 +139,23 @@ class Vgetty(object):
     """Recieve a message from the voice library.
     If expecting certain responses, error if unexpected responses.
     timeout is in seconds (or False)"""
-    data = self._recv(timeout.get('timeout', 10))
+    if expected:
+      LOG.debug("Expecting one of: " + repr(expected))
+    data = self._recv(timeout.get('timeout', 1))
     recv = data.decode('ascii').strip()
     self.status = recv
+    LOG.info("Status is now " + recv)
 
     if recv == "ERROR":
       self.status = None  # unknown state
+      LOG.error("Voice library reported an error")
       raise IOError("Voice library reported an error")
 
     if expected and recv not in expected:
       fmt = (', '.join(expected), recv)
+
       self.status = None  # unknown state
+      LOG.error("Expected one of {%s}, got '%s'"%fmt)
       raise ValueError("Expected one of {%s}, got '%s'"%fmt)
     return recv
 
@@ -130,7 +164,9 @@ class Vgetty(object):
     timeout is in seconds (or False)
     Throws error if invalid response"""
     self.recv(response, timeout=timeout)
+    return 
 
+  @require_enabled
   def ignoreuntil(self, resp, *resps, **timeout):
     """Throws away responses until receiving one of the given responses,
     then returns it"""
@@ -144,12 +180,12 @@ class Vgetty(object):
     return recv
 
   def play(self, filename):
-    """Play an audio file"""
+    """Play an audio file, or do nothing if not filename"""
     if not filename:
       return
     self.send("PLAY %s" % filename)
     self.recv('PLAYING')
-    self.waitfor()
+    self.waitfor(timeout=0)
 
   def beep(self, freq=None, len=None):
     """Play a beep (len in ms)"""
@@ -164,14 +200,17 @@ class Vgetty(object):
     self.waitfor("DIALING")
     self.waitfor()
 
+  def set_autostop(self, status):
+    self.send("AUTOSTOP " + (status and 'ON' or 'OFF'))
+    self.waitfor()
+
   def read_dtmf_string(self, waittime=30, prompt=None):
     """Read a dtmf code string. '*' clear the string and # ends it.
     time is in seconds
     Returns the string read, or None if silence was detected
     prompt is None or a filename"""
 
-    self.send("AUTOSTOP ON")
-    self.waitfor()
+    self.set_autostop(True)
 
     self.send("ENABLE EVENTS")
     self.waitfor()
@@ -185,6 +224,7 @@ class Vgetty(object):
 
     recvd = []
     while self.status and self.status != 'READY':
+      LOG.debug("Code = [%s]" % ', '.join(recvd))
       self.recv(timeout=waittime)
       if self.status == "RECEIVED_DTMF":
         code = self.recv()
@@ -206,9 +246,9 @@ class Vgetty(object):
     self.send("DISABLE EVENTS")
     self.waitfor()
 
-    if not AUTOSTOP:
-      self.send("AUTOSTOP OFF")
-      self.waitfor()
+    self.set_autostop(AUTOSTOP)
+
+    LOG.debug("CODE: " + repr(recvd))
 
     return None if recvd is None else ''.join(recvd)
 
