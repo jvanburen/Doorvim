@@ -70,7 +70,7 @@ def main():
   return 0
 
 if __name__ == '__main__':
-  logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
+  logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
   logging.info("Starting " + __name__)
   LOG = logging.getLogger(__name__)
 
