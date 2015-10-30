@@ -36,10 +36,10 @@ from time import sleep
 import logging
 import sys ###
 
-HELLO = None  # "sounds/prompt.m4a"  # Convert to modem format
-UNAUTH = None  # "sounds/no.m4a"  # Convert to modem format
-GOODBYE = None  # "sounds/goodbye.m4a"  # Convert to modem format
-LOG_FILE = '/users/jacob/Desktop/visitors.log'  # '/home/pi/visitors.log'
+HELLO = "sounds/prompt.pcm"  # Convert to modem format
+UNAUTH = "sounds/no.pcm"  # Convert to modem format
+GOODBYE = "sounds/goodbye.pcm"  # Convert to modem format
+LOG_FILE = '/home/pi/visitors.log'  # '/users/jacob/Desktop/visitors.log'
 
 class Doorvim(Vgetty):
   def unlock(self):
