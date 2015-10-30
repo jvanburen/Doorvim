@@ -144,7 +144,6 @@ class User(object):
       self.digest = hash_obj.digest()
     else:  # hash was specified instead
       try:
-        print hexdigest
         self.digest = unhexlify(hexdigest.strip())
         assert len(self.digest) == self.HASH_LEN
       except (ValueError, AssertionError):
