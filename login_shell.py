@@ -23,8 +23,8 @@
 
 """
 This file acts as a login shell for the door user.
-It has two commands, auth and revoke.
-auth updates the modified time on AUTH_FILE to be AUTH_TIMEOUT seconds in the future
+It has two commands, authenticate and revoke (case insensitive).
+authenticate updates the modified time on AUTH_FILE to be AUTH_TIMEOUT seconds in the future
 revoke deletes AUTH_FILE
 
 doorvim.py uses AUTH_FILE to decide to unlock the door. It unlocks only if the file's
@@ -43,15 +43,15 @@ AUTH_TIMEOUT = 120 # seconds
 
 def main():
     parser = argparse.ArgumentParser(description="Authenticate doorvim")
-    parser.add_argument('-c', metavar="ACTION", dest='action', choices=['auth', 'revoke'],
+    parser.add_argument('-c', metavar="ACTION", dest='action', choices=['authenticate', 'revoke'],
                         help="What to do, either\
-                        'auth' (Authenticates doorvim for the next {} seconds)\
+                        'authenticate' (Authenticates doorvim for the next {} seconds)\
                         or 'revoke' (Revokes any existing authentication)"
                         .format(AUTH_TIMEOUT))
     args = parser.parse_args()
     if args.action is None:
         args.action = raw_input("Action (auth/revoke)> ")
-    if args.action == "auth":
+    if args.action.lower() == "authenticate":
         try:
             expiry = time.time() + AUTH_TIMEOUT
             with open(AUTH_FILE, 'a'):
@@ -61,7 +61,7 @@ def main():
             print("Doorvim Error\nAuthentication Failed!:", e, sep='\n')
             exit(1)
         print("Success\nDoorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
-    elif args.action == "revoke":
+    elif args.action.lower() == "revoke":
         try:
             os.remove(AUTH_FILE)
         except OSError as e:
