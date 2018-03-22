@@ -29,53 +29,61 @@ Set this program as call_program in /etc/mgetty/voice.conf
 """
 
 from __future__ import division
-
-from user import load_users, authenticate_user
 from interface import Vgetty
-from time import sleep
+import time
 import logging
-import sys ###
+import os
 
-HELLO = "sounds/prompt.pcm"  # Convert to modem format
-UNAUTH = "sounds/no.pcm"  # Convert to modem format
-GOODBYE = "sounds/goodbye.pcm"  # Convert to modem format
-LOG_FILE = '/home/pi/visitors.log'  # '/users/jacob/Desktop/visitors.log'
+HELLO = "/home/door/sounds/prompt.pcm"  # Convert to modem format
+UNAUTH = "/home/door/sounds/no.pcm"  # Convert to modem format
+GOODBYE = "/home/door/sounds/goodbye.pcm"  # Convert to modem format
+AUTH_FILE = "/home/door/.auth"
+LOG_FILE = '/home/door/visitors.log'  # '/users/jacob/Desktop/visitors.log'
 
 class Doorvim(Vgetty):
   def unlock(self):
     self.dial("#9")
 
+def is_authenticated():
+  try:
+    st = os.stat(AUTH_FILE)
+  except OSError:
+    return False
+  else:
+    try:
+      os.remove(AUTH_FILE)
+    except OSError, IOError:
+      pass
+    expiry_time = st.st_mtime
+    return time.time() < expiry_time
+
 def main():
   """Program entry point"""
-  users = load_users()
-  doorvim = Doorvim()
-
-  code = doorvim.read_dtmf_string(prompt=HELLO)
-  if code is None:
-    doorvim.play(GOODBYE)
-    return 0
-  user = authenticate_user(code, users)
-  if user is None:
-    LOG.info(" Unauthorized user entered code: " + code)
-    doorvim.play(UNAUTH)
-    sleep(0.5)
-  else:
-    LOG.info(" recognized user " + user.name)
-    doorvim.play(user.greeting)
-    doorvim.unlock()
-  doorvim.play(GOODBYE)
-
-  del doorvim
-  Vgetty.finalize()
+  with Doorvim() as doorvim:
+    code = doorvim.read_dtmf_string(prompt=HELLO)
+    if code is None:
+      doorvim.play(GOODBYE)
+      return 0
+    if is_authenticated():
+      LOG.info("authenticated ")
+      doorvim.play(HELLO)
+      doorvim.unlock()
+    else:
+      LOG.info("not authenticated ")
+      doorvim.play(UNAUTH)
+      sleep(0.5)
+      doorvim.play(GOODBYE)
   return 0
 
 if __name__ == '__main__':
-  logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+  logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG)
+
   logging.info("Starting " + __name__)
   LOG = logging.getLogger(__name__)
-
-  RETC = main()
-  # logging.shutdown()
+  try:
+    RETC = main()
+  finally:
+    logging.shutdown()
   exit(RETC)
 
 

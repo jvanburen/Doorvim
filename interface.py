@@ -36,12 +36,6 @@ __all__ = [
   "Vgetty"
 ]
 
-# Source: https://en.wikipedia.org/wiki/DTMF
-# LO_TONES = [697, 770, 852, 941]
-# HI_TONES = [1209, 1336, 1477, 1633]
-# DTONES = [(lo, hi) for lo in LO_TONES for hi in HI_TONES]
-# DTMF_TONE = dict(zip("123A456B789C*0#D", DTONES))
-
 DTMF_WAIT = 30
 AUTOSTOP = True
 LOG = logging.getLogger(__name__)
@@ -60,7 +54,8 @@ def require_enabled(f):
   return wrapper
 
 class Vgetty(object):
-  """Singleton representing the voice library"""
+  """Singleton representing the voice library.
+  A context manager, intended to be used in a "with" statement"""
   __instance = None
 
   def __new__(cls):
@@ -69,7 +64,7 @@ class Vgetty(object):
     return Vgetty.__instance
 
   def __init__(self):
-    if hasattr(Vgetty.__instance, "status"):
+    if self.status is not None:
       return
     def vin_timeout(signum, _):
       """Handles read timeout"""
@@ -98,7 +93,10 @@ class Vgetty(object):
       self.send("AUTOSTOP ON")
       self.waitfor()
 
-  def __del__(self):
+  def __enter__(self):
+    pass
+
+  def __exit__(self, *args):
     LOG.info("Finalizing Vgetty")
     if self.enabled:
       self.send("GOODBYE")
@@ -112,10 +110,6 @@ class Vgetty(object):
       self._vout.close()
     self.status = None
     LOG.info("Vgetty finalized")
-
-  @staticmethod
-  def finalize():
-    Vgetty.__instance = None
 
   @property
   def enabled(self):
