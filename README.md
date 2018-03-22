@@ -12,5 +12,5 @@ A vgetty door-answering machine for my apartment.
 - Change the password for the user `door` to be the password to unlock the door.
 
 ### Companion App
-There is a Workflow for automating this easily from an iPhone, available at https://workflow.is/workflows/849e3c7472624af2848af7baae330c06 
+There is a Workflow for automating this easily from an iPhone, available at https://workflow.is/workflows/277a80cd1cb1433882db6220137e3699
 
