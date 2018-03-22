@@ -40,7 +40,7 @@ def main():
             expiry = time.time() + AUTH_TIMEOUT
             with open(AUTH_FILE, 'a'):
                 os.chmod(AUTH_FILE, 0o660)
-                os.utime(AUTH_FILE, times=(expiry, expiry))
+                os.utime(AUTH_FILE, (expiry, expiry))
         except IOError, OSError:
             print("fail")
             exit(1)
