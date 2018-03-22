@@ -53,7 +53,7 @@ def main():
             if e.errno != 2:
                 print('fail')
                 exit(1)
-            print("Doorvim no longer authenticated")
+        print("Doorvim no longer authenticated")
     else:
         print("Error: Unrecognized command:", action)
         exit(1)
