@@ -61,6 +61,7 @@ class Vgetty(object):
   def __new__(cls):
     if Vgetty.__instance is None:
       Vgetty.__instance = object.__new__(cls)
+      Vgetty.__instance.status = None
     return Vgetty.__instance
 
   def __init__(self):
@@ -94,7 +95,7 @@ class Vgetty(object):
       self.waitfor()
 
   def __enter__(self):
-    pass
+    return self
 
   def __exit__(self, *args):
     LOG.info("Finalizing Vgetty")

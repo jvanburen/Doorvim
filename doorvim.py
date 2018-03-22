@@ -60,19 +60,14 @@ class Doorvim(Vgetty):
 def main():
   """Program entry point"""
   with Doorvim() as doorvim:
-    code = doorvim.read_dtmf_string(prompt=HELLO)
-    if code is None:
-      doorvim.play(GOODBYE)
-      return 0
     if is_authenticated():
       LOG.info("authenticated ")
-      doorvim.play(HELLO)
       doorvim.unlock()
     else:
       LOG.info("not authenticated ")
       doorvim.play(UNAUTH)
       sleep(0.5)
-      doorvim.play(GOODBYE)
+    doorvim.play(GOODBYE)
   return 0
 
 if __name__ == '__main__':
@@ -82,9 +77,11 @@ if __name__ == '__main__':
   LOG = logging.getLogger(__name__)
   try:
     RETC = main()
+  except Exception as e:
+    LOG.error(e)
+    exit(1)
+  else:
+    exit(RETC)
   finally:
     logging.shutdown()
-  exit(RETC)
-
-
 
