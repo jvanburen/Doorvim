@@ -50,7 +50,7 @@ def main():
                         .format(AUTH_TIMEOUT))
     args = parser.parse_args()
     if args.action is None:
-        args.action = raw_input("Action (auth/revoke)> ")
+        args.action = raw_input("Action (authenticate/revoke)> ")
     if args.action.lower() == "authenticate":
         try:
             expiry = time.time() + AUTH_TIMEOUT
@@ -58,14 +58,16 @@ def main():
                 os.chmod(AUTH_FILE, 0o660)
                 os.utime(AUTH_FILE, (expiry, expiry))
         except (IOError, OSError) as e:
-            print("Doorvim Error\nAuthentication Failed!:", e, sep='\n')
-        print("Success\nDoorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
+            print("Doorvim Authentication Failed!", e, sep='\n')
+        else:
+            print("Success\nDoorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
     elif args.action.lower() == "revoke":
         try:
             os.remove(AUTH_FILE)
         except OSError as e:
             if e.errno != 2:
-                print("Doorvim Error\nDeauthentication Failed!:", e, sep='\n')
+                print("Doorvim Deauthentication Failed!", e, sep='\n')
+                return
         print("Success\nDoorvim no longer authenticated")
     else:
         print("Doorvim Error\nUnrecognized action:", args.action)
