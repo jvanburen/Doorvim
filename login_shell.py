@@ -29,33 +29,41 @@ from __future__ import print_function
 
 import os
 import time
+import argparse
 
 AUTH_FILE = "/home/door/doorvim/.auth"
 AUTH_TIMEOUT = 120 # seconds
 
 def main():
-    # action = raw_input("Action (auth/revoke)> ")
-    action = raw_input()
-    if action == "auth":
+    parser = argparse.ArgumentParser(description="Authenticate doorvim")
+    parser.add_argument('-c', metavar="ACTION", dest='action', choices=['auth', 'revoke'],
+                        help="What to do, either\
+                        'auth' (Authenticates doorvim for the next {} seconds)\
+                        or 'revoke' (Revokes any existing authentication)"
+                        .format(AUTH_TIMEOUT))
+    args = parser.parse_args()
+    if args.action is None:
+        args.action = raw_input("Action (auth/revoke)> ")
+    if args.action == "auth":
         try:
             expiry = time.time() + AUTH_TIMEOUT
             with open(AUTH_FILE, 'a'):
                 os.chmod(AUTH_FILE, 0o660)
                 os.utime(AUTH_FILE, (expiry, expiry))
-        except (IOError, OSError):
-            print("fail")
+        except (IOError, OSError) as e:
+            print("Doorvim Error\nAuthentication Failed!:", e, sep='\n')
             exit(1)
-        print("Doorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
-    elif action == "revoke":
+        print("Success\nDoorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
+    elif args.action == "revoke":
         try:
             os.remove(AUTH_FILE)
         except OSError as e:
             if e.errno != 2:
-                print('fail')
+                print("Doorvim Error\nDeauthentication Failed!:", e, sep='\n')
                 exit(1)
-        print("Doorvim no longer authenticated")
+        print("Success\nDoorvim no longer authenticated")
     else:
-        print("Error: Unrecognized command:", action)
+        print("Doorvim Error\nUnrecognized action:", args.action)
         exit(1)
     exit(0)
 
