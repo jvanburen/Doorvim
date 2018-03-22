@@ -23,9 +23,7 @@
 
 """
 This file acts as a login shell for the door user.
-It has two commands, authenticate and revoke (case insensitive).
-authenticate updates the modified time on AUTH_FILE to be AUTH_TIMEOUT seconds in the future
-revoke deletes AUTH_FILE
+It updates the modified time on AUTH_FILE to be AUTH_TIMEOUT seconds in the future
 
 doorvim.py uses AUTH_FILE to decide to unlock the door. It unlocks only if the file's
 last-modified time is in the future. Additionally it deletes the file after unlocking
@@ -39,38 +37,40 @@ import time
 import argparse
 
 AUTH_FILE = "/home/door/doorvim/.auth"
-AUTH_TIMEOUT = 120 # seconds
+MAX_TIMEOUT = 60*60*24*365.25
 
 def main():
     parser = argparse.ArgumentParser(description="Authenticate doorvim")
-    parser.add_argument('-c', metavar="ACTION", dest='action',
-                        help="What to do, either\
-                        'authenticate' (Authenticates doorvim for the next {} seconds)\
-                        or 'revoke' (Revokes any existing authentication)"
-                        .format(AUTH_TIMEOUT))
+    parser.add_argument('-c', metavar="MM:SS", dest='timeout',
+                        help="Allow doorvim to open the door for the next TIMEOUT duration of time")
     args = parser.parse_args()
-    if args.action is None:
-        args.action = raw_input("Action (authenticate/revoke)> ")
-    if args.action.lower() == "authenticate":
+    if args.timeout is None:
+        args.timeout = raw_input("Timeout? > ")
+    try:
+        if ":" in args.timeout:
+            minutes, seconds = args.timeout.split(":")
+            if minutes < 0 or seconds < 0:
+                raise ValueError
+            timeout = int(minutes) * 60 + int(seconds)
+        else:
+            timeout = int(args.timeout)
+            if timeout < 0:
+                raise ValueError
+    except (ValueError, TypeError):
+        print("Doorvim Error\n Invalid duration:", args.timeout)
+    else:
+        if timeout > MAX_TIMEOUT:
+            print("Doorvim Error\nTimeout too large:", args.timeout)
+            return
+        expiry = time.time() + timeout
         try:
-            expiry = time.time() + AUTH_TIMEOUT
             with open(AUTH_FILE, 'a'):
                 os.chmod(AUTH_FILE, 0o660)
                 os.utime(AUTH_FILE, (expiry, expiry))
         except (IOError, OSError) as e:
             print("Doorvim Authentication Failed!", e, sep='\n')
         else:
-            print("Success\nDoorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
-    elif args.action.lower() == "revoke":
-        try:
-            os.remove(AUTH_FILE)
-        except OSError as e:
-            if e.errno != 2:
-                print("Doorvim Deauthentication Failed!", e, sep='\n')
-                return
-        print("Success\nDoorvim no longer authenticated")
-    else:
-        print("Doorvim Error\nUnrecognized action:", args.action)
+            print("Success\nDoorvim now authenticated for {}m {}s".format(*divmod(timeout, 60)))
 
 if __name__ == '__main__':
     main()
