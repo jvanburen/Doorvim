@@ -82,11 +82,11 @@ def main():
                 hours, timeout = divmod(timeout, 3600)
                 minutes, seconds = divmod(timeout, 60)
                 if hours > 0:
-                    print("Success\nDoorvim now authenticated for {}h {}m {}s".format(hours, minutes, seconds))
+                    print("Success\nDoorvim now authenticated for\n{}h {}m {}s".format(hours, minutes, seconds))
                 elif minutes > 0:
-                    print("Success\nDoorvim now authenticated for {}m {}s".format(minutes, seconds))
+                    print("Success\nDoorvim now authenticated for\n{}m {}s".format(minutes, seconds))
                 else:
-                    print("Success\nDoorvim now authenticated for {}s".format(seconds))
+                    print("Success\nDoorvim now authenticated for\n{}s".format(seconds))
 
 if __name__ == '__main__':
     main()
