@@ -44,6 +44,7 @@ def main():
         except (IOError, OSError):
             print("fail")
             exit(1)
+        print("Doorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
     elif action == "revoke":
         try:
             os.remove(AUTH_FILE)
@@ -51,8 +52,9 @@ def main():
             if e.errno != 2:
                 print('fail')
                 exit(1)
+            print("Doorvim no longer authenticated")
     else:
-        print("unrecognized")
+        print("Error: Unrecognized command:", action)
         exit(1)
     exit(0)
 
