@@ -37,56 +37,78 @@ import time
 import argparse
 
 AUTH_FILE = "/home/door/doorvim/.auth"
-MAX_TIMEOUT = 60*60*24
+LOG_FILE = "/home/door/doorvim/visitors.log"
+MAX_TIMEOUT = 60*60*24 # seconds (1 day)
+LOG = None
 
 def main():
-    parser = argparse.ArgumentParser(description="Authenticate doorvim")
-    parser.add_argument('-c', metavar="MM:SS", dest='timeout',
-                        help="Allow doorvim to open the door for the next TIMEOUT duration of time")
-    args = parser.parse_args()
-    if args.timeout is None:
-        args.timeout = raw_input("Timeout? > ")
-    try:
-        if ":" in args.timeout:
-            minutes, seconds = args.timeout.split(":")
-            if minutes < 0 or seconds < 0:
-                raise ValueError
-            timeout = int(minutes) * 60 + int(seconds)
-        else:
-            timeout = int(args.timeout)
-            if timeout < 0:
-                raise ValueError
-    except (ValueError, TypeError):
-        print("Doorvim Error\n Invalid duration:", args.timeout)
+  def success(message):
+    msg = "Success\n" + message
+    print(msg)
+    LOG.info(msg)
+    exit(0)
+  def fail(message):
+    msg = "Doorvim Error\n" + message
+    print(msg)
+    LOG.warn(msg)
+    exit(0)
+  def nonnegint(s):
+    i = int(s)
+    if i < 0:
+      raise ValueError("Negative integers not allowed here")
+    return i
+
+  parser = argparse.ArgumentParser(description="Authenticate doorvim")
+  parser.add_argument('-c', metavar="MM:SS", dest='timeout',
+                      help="Allow doorvim to open the door for the next TIMEOUT duration of time")
+  args = parser.parse_args()
+  if args.timeout is None:
+    args.timeout = raw_input("Timeout? > ")
+  LOG.info("Got Login request for " + args.timeout)
+  try:
+    if ":" in args.timeout:
+      minutes, seconds = args.timeout.split(":")
+      timeout = nonnegint(minutes) * 60 + nonnegint(seconds)
     else:
-        if timeout > MAX_TIMEOUT:
-            print("Doorvim Error\nTimeout too large:", args.timeout)
-            return
-        elif timeout == 0:
-            try:
-                os.remove(AUTH_FILE)
-            except OSError as e:
-                if e.errno != 2:
-                    print("Doorvim Deauthentication Failed!", e, sep='\n')
-                    return
-            print("Success\nDoorvim no longer authenticated")
+      timeout = nonnegint(args.timeout)
+  except (ValueError, TypeError):
+    fail("Invalid duration:", args.timeout)
+  else:
+    if timeout > MAX_TIMEOUT:
+      fail("Timeout too large:", args.timeout)
+    elif timeout == 0:
+      try:
+        os.remove(AUTH_FILE)
+      except OSError as e:
+        if e.errno != 2:
+          fail("Deauthentication Failed!\n" + str(e))
+      success("Doorvim no longer authenticated")
+    else:
+      expiry = time.time() + timeout
+      try:
+        with open(AUTH_FILE, 'a'):
+          os.chmod(AUTH_FILE, 0o660) # chmod first!
+          os.utime(AUTH_FILE, (expiry, expiry))
+      except (IOError, OSError) as e:
+        fail("Doorvim Authentication Failed!", e, sep='\n')
+      else:
+        hours, timeout = divmod(timeout, 3600)
+        minutes, seconds = divmod(timeout, 60)
+        if hours > 0:
+          success("Doorvim now authenticated for\n{}h {}m {}s".format(hours, minutes, seconds))
+        elif minutes > 0:
+          success("Doorvim now authenticated for\n{}m {}s".format(minutes, seconds))
         else:
-            expiry = time.time() + timeout
-            try:
-                with open(AUTH_FILE, 'a'):
-                    os.chmod(AUTH_FILE, 0o660)
-                    os.utime(AUTH_FILE, (expiry, expiry))
-            except (IOError, OSError) as e:
-                print("Doorvim Authentication Failed!", e, sep='\n')
-            else:
-                hours, timeout = divmod(timeout, 3600)
-                minutes, seconds = divmod(timeout, 60)
-                if hours > 0:
-                    print("Success\nDoorvim now authenticated for\n{}h {}m {}s".format(hours, minutes, seconds))
-                elif minutes > 0:
-                    print("Success\nDoorvim now authenticated for\n{}m {}s".format(minutes, seconds))
-                else:
-                    print("Success\nDoorvim now authenticated for\n{}s".format(seconds))
+          success("Doorvim now authenticated for\n{}s".format(seconds))
 
 if __name__ == '__main__':
+  logging.basicConfig(filename=LOG_FILE, level=logging.DEBUG)
+  logging.info("Starting {} as {}".format(__file__, __name__))
+  LOG = logging.getLogger(__name__)
+  try:
     main()
+  except Exception as e:
+    LOG.error(e)
+    raise
+  finally:
+    logging.shutdown()

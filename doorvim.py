@@ -48,10 +48,11 @@ def is_authenticated():
   else:
     try:
       os.remove(AUTH_FILE)
-    except OSError, IOError:
+    except (OSError, IOError) as e:
+      LOG.warn("Could not remove {}\n{}".format(AUTH_FILE, e))
       pass
     expiry_time = st.st_mtime
-    return time.time() < expiry_time
+    return time.time() < expiry_time and st.st_mode | 0o660 == 0o660
 
 class Doorvim(Vgetty):
   def unlock(self):
@@ -61,13 +62,13 @@ def main():
   """Program entry point"""
   with Doorvim() as doorvim:
     if is_authenticated():
-      LOG.info("authenticated ")
+      LOG.info("authenticated")
       doorvim.play(WELCOME)
       doorvim.unlock()
     else:
-      LOG.info("not authenticated ")
+      LOG.info("not authenticated")
       doorvim.play(REJECT)
-      time.sleep(0.5)
+      time.sleep(1)
     doorvim.play(GOODDAY)
   return 0
 
