@@ -34,7 +34,8 @@ AUTH_FILE = "/home/door/doorvim/.auth"
 AUTH_TIMEOUT = 120 # seconds
 
 def main():
-    action = raw_input("Action (auth/revoke)> ")
+    # action = raw_input("Action (auth/revoke)> ")
+    action = raw_input()
     if action == "auth":
         try:
             expiry = time.time() + AUTH_TIMEOUT
