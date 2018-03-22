@@ -43,7 +43,7 @@ AUTH_TIMEOUT = 120 # seconds
 
 def main():
     parser = argparse.ArgumentParser(description="Authenticate doorvim")
-    parser.add_argument('-c', metavar="ACTION", dest='action', choices=['authenticate', 'revoke'],
+    parser.add_argument('-c', metavar="ACTION", dest='action',
                         help="What to do, either\
                         'authenticate' (Authenticates doorvim for the next {} seconds)\
                         or 'revoke' (Revokes any existing authentication)"
