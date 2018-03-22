@@ -69,7 +69,7 @@ def main():
                 if e.errno != 2:
                     print("Doorvim Deauthentication Failed!", e, sep='\n')
                     return
-                print("Success\nDoorvim no longer authenticated")
+            print("Success\nDoorvim no longer authenticated")
         else:
             expiry = time.time() + timeout
             try:
