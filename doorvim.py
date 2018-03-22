@@ -34,9 +34,9 @@ import time
 import logging
 import os
 
-HELLO = "/home/door/doorvim/sounds/prompt.pcm"  # Convert to modem format
-UNAUTH = "/home/door/doorvim/sounds/no.pcm"  # Convert to modem format
-GOODBYE = "/home/door/doorvim/sounds/goodbye.pcm"  # Convert to modem format
+WELCOME = "/home/door/doorvim/sounds/welcome.rmd"
+REJECT = "/home/door/doorvim/sounds/reject.rmd"
+GOODDAY = "/home/door/doorvim/sounds/goodday.rmd"
 AUTH_FILE = "/home/door/doorvim/.auth"
 LOG_FILE = "/home/door/doorvim/visitors.log"
 
@@ -62,12 +62,13 @@ def main():
   with Doorvim() as doorvim:
     if is_authenticated():
       LOG.info("authenticated ")
+      doorvim.play(WELCOME)
       doorvim.unlock()
     else:
       LOG.info("not authenticated ")
-      doorvim.play(UNAUTH)
+      doorvim.play(REJECT)
       sleep(0.5)
-    doorvim.play(GOODBYE)
+    doorvim.play(GOODDAY)
   return 0
 
 if __name__ == '__main__':
