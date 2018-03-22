@@ -30,7 +30,7 @@ from __future__ import print_function
 import os
 import time
 
-AUTH_FILE = "/home/door/.auth"
+AUTH_FILE = "/home/door/doorvim/.auth"
 AUTH_TIMEOUT = 120 # seconds
 
 def main():
