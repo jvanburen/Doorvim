@@ -37,7 +37,7 @@ import time
 import argparse
 
 AUTH_FILE = "/home/door/doorvim/.auth"
-MAX_TIMEOUT = 60*60*24*365.25
+MAX_TIMEOUT = 60*60*24
 
 def main():
     parser = argparse.ArgumentParser(description="Authenticate doorvim")
@@ -79,7 +79,14 @@ def main():
             except (IOError, OSError) as e:
                 print("Doorvim Authentication Failed!", e, sep='\n')
             else:
-                print("Success\nDoorvim now authenticated for {}m {}s".format(*divmod(timeout, 60)))
+                hours, timeout = divmod(timeout, 3600)
+                minutes, seconds = divmod(timeout, 60)
+                if hours > 0:
+                    print("Success\nDoorvim now authenticated for {}h {}m {}s".format(hours, minutes, seconds))
+                elif minutes > 0:
+                    print("Success\nDoorvim now authenticated for {}m {}s".format(minutes, seconds))
+                else:
+                    print("Success\nDoorvim now authenticated for {}s".format(seconds))
 
 if __name__ == '__main__':
     main()
