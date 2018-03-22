@@ -41,7 +41,7 @@ def main():
             with open(AUTH_FILE, 'a'):
                 os.chmod(AUTH_FILE, 0o660)
                 os.utime(AUTH_FILE, (expiry, expiry))
-        except IOError, OSError:
+        except (IOError, OSError):
             print("fail")
             exit(1)
     elif action == "revoke":
