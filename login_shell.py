@@ -62,15 +62,24 @@ def main():
         if timeout > MAX_TIMEOUT:
             print("Doorvim Error\nTimeout too large:", args.timeout)
             return
-        expiry = time.time() + timeout
-        try:
-            with open(AUTH_FILE, 'a'):
-                os.chmod(AUTH_FILE, 0o660)
-                os.utime(AUTH_FILE, (expiry, expiry))
-        except (IOError, OSError) as e:
-            print("Doorvim Authentication Failed!", e, sep='\n')
+        elif timeout == 0:
+            try:
+                os.remove(AUTH_FILE)
+            except OSError as e:
+                if e.errno != 2:
+                    print("Doorvim Deauthentication Failed!", e, sep='\n')
+                    return
+                print("Success\nDoorvim no longer authenticated")
         else:
-            print("Success\nDoorvim now authenticated for {}m {}s".format(*divmod(timeout, 60)))
+            expiry = time.time() + timeout
+            try:
+                with open(AUTH_FILE, 'a'):
+                    os.chmod(AUTH_FILE, 0o660)
+                    os.utime(AUTH_FILE, (expiry, expiry))
+            except (IOError, OSError) as e:
+                print("Doorvim Authentication Failed!", e, sep='\n')
+            else:
+                print("Success\nDoorvim now authenticated for {}m {}s".format(*divmod(timeout, 60)))
 
 if __name__ == '__main__':
     main()
