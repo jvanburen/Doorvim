@@ -22,7 +22,14 @@
 # THE SOFTWARE.
 
 """
-This file allows you to authenticate the file for 
+This file acts as a login shell for the door user.
+It has two commands, auth and revoke.
+auth updates the modified time on AUTH_FILE to be AUTH_TIMEOUT seconds in the future
+revoke deletes AUTH_FILE
+
+doorvim.py uses AUTH_FILE to decide to unlock the door. It unlocks only if the file's
+last-modified time is in the future. Additionally it deletes the file after unlocking
+the door, to prevent people slipping in after you.
 """
 
 from __future__ import print_function
