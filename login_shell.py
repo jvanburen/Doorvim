@@ -59,7 +59,6 @@ def main():
                 os.utime(AUTH_FILE, (expiry, expiry))
         except (IOError, OSError) as e:
             print("Doorvim Error\nAuthentication Failed!:", e, sep='\n')
-            exit(1)
         print("Success\nDoorvim authenticated for {} seconds".format(AUTH_TIMEOUT))
     elif args.action.lower() == "revoke":
         try:
@@ -67,12 +66,9 @@ def main():
         except OSError as e:
             if e.errno != 2:
                 print("Doorvim Error\nDeauthentication Failed!:", e, sep='\n')
-                exit(1)
         print("Success\nDoorvim no longer authenticated")
     else:
         print("Doorvim Error\nUnrecognized action:", args.action)
-        exit(1)
-    exit(0)
 
 if __name__ == '__main__':
     main()
