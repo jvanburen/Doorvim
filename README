@@ -1,4 +1,12 @@
-Doorvim
+# Doorvim
 
 A vgetty door-answering machine for my apartment.
-Set this program as call_program in /etc/mgetty/voice.conf
+
+### Installation
+
+- Ensure vgetty is installed and functioning
+- Create a user named `door`
+- Clone this repo to `/home/door/doorvim/`
+- Set `/home/door/doorvim/doorvim.py` as `call_program` in /etc/mgetty/voice.conf
+- Set the login shell for `door` to be `/home/door/doorvim/login_shell.py`
+- Change the password for the user `door` to be the password to unlock the door.
