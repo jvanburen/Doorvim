@@ -127,7 +127,7 @@ class Vgetty(object):
   def _blocking_recv(self):
     """Listen for a message from the voice library"""
     data = self._vin.readline()
-    LOG.info("RECV: " + data.decode('latin1'))
+    LOG.info("RECV: " + data.decode('latin1').strip())
     return data
 
   @require_enabled

@@ -67,7 +67,7 @@ def main():
     else:
       LOG.info("not authenticated ")
       doorvim.play(REJECT)
-      sleep(0.5)
+      time.sleep(0.5)
     doorvim.play(GOODDAY)
   return 0
 
