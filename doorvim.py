@@ -34,15 +34,11 @@ import time
 import logging
 import os
 
-HELLO = "/home/door/sounds/prompt.pcm"  # Convert to modem format
-UNAUTH = "/home/door/sounds/no.pcm"  # Convert to modem format
-GOODBYE = "/home/door/sounds/goodbye.pcm"  # Convert to modem format
-AUTH_FILE = "/home/door/.auth"
-LOG_FILE = '/home/door/visitors.log'  # '/users/jacob/Desktop/visitors.log'
-
-class Doorvim(Vgetty):
-  def unlock(self):
-    self.dial("#9")
+HELLO = "/home/door/doorvim/sounds/prompt.pcm"  # Convert to modem format
+UNAUTH = "/home/door/doorvim/sounds/no.pcm"  # Convert to modem format
+GOODBYE = "/home/door/doorvim/sounds/goodbye.pcm"  # Convert to modem format
+AUTH_FILE = "/home/door/doorvim/.auth"
+LOG_FILE = "/home/door/doorvim/visitors.log"
 
 def is_authenticated():
   try:
@@ -56,6 +52,10 @@ def is_authenticated():
       pass
     expiry_time = st.st_mtime
     return time.time() < expiry_time
+
+class Doorvim(Vgetty):
+  def unlock(self):
+    self.dial("#9")
 
 def main():
   """Program entry point"""
